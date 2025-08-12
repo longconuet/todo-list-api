@@ -57,5 +57,5 @@ jobs:
         username: ${{ secrets.VPS_USERNAME }}
         key: ${{ secrets.VPS_SSH_KEY }}
         script: |
-          systemctl daemon-reload
-          systemctl restart todoapp-api.service
+          sudo systemctl daemon-reload
+          sudo systemctl restart todoapp-api.service
