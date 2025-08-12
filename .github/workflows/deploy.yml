@@ -23,13 +23,13 @@ jobs:
       with:
         dotnet-version: 9.0.x
     - name: Restore dependencies
-      run: dotnet restore ./projects.sln
+      run: dotnet restore ./TodoListApi.csproj
       
     - name: Build
-      run: dotnet build ./projects.sln --no-restore
+      run: dotnet build ./TodoListApi.csproj --no-restore
       
     - name: Publish
-      run: dotnet publish ./projects.sln --configuration Release --no-build -o ./publish
+      run: dotnet publish ./TodoListApi.csproj --configuration Release --no-build -o ./publish
 
     - name: Deploy to VPS
       uses: appleboy/scp-action@master
