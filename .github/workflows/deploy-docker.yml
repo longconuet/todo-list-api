@@ -93,7 +93,7 @@ jobs:
             echo "IMAGE_TAG=${{ needs.build.outputs.image_name }}" > .env
 
             # Đăng nhập vào Docker Hub
-            docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             
             # Kéo image mới nhất và khởi động lại dịch vụ
             docker-compose pull
