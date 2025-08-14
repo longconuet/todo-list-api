@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  todolistapi:
+    image: ${IMAGE_TAG}
+    container_name: todolistapi
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5001:8080"
+    volumes:
+      - ./appdata:/app/data
