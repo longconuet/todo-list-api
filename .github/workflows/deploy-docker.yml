@@ -44,6 +44,14 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-dotnet-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-dotnet-
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -51,6 +59,8 @@ jobs:
           push: true
           tags: ${{ steps.docker_meta.outputs.tags }}
           labels: ${{ steps.docker_meta.outputs.labels }}
+          cache-from: type=gha # Bật cache đọc từ GitHub Actions
+          cache-to: type=gha,mode=max # Bật cache ghi lên GitHub Actions
 
   ####################################
   # JOB 2: DEPLOY TO PRODUCTION    #
@@ -68,10 +78,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Show image name from build step
-        run: |
-          echo "Deploying image: ${{ needs.build.outputs.image_name }}"
 
       - name: Copy docker-compose.yml to VPS
         uses: appleboy/scp-action@master
@@ -92,9 +98,15 @@ jobs:
             # Di chuyển tới thư mục triển khai
             # mkdir -p ${{ secrets.DOCKER_DEPLOY_PATH }}
             cd ${{ secrets.DOCKER_DEPLOY_PATH }}
+
+            # Tái tạo lại tên image đầy đủ với tag là mã SHA của commit
+            # Đây là cách đáng tin cậy nhất để đảm bảo deploy đúng phiên bản
+            FULL_IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ github.sha }}"
+
+            echo "Deploying image: ${FULL_IMAGE_NAME}"
             
             # Ghi tên image từ job build vào file .env để docker-compose đọc
-            echo "IMAGE_TAG=${{ needs.build.outputs.image_name }}" > .env
+            echo "IMAGE_TAG=${FULL_IMAGE_NAME}" > .env
 
             # Đăng nhập vào Docker Hub
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
