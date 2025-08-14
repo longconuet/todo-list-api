@@ -74,7 +74,6 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             # Di chuyển tới thư mục triển khai
-            mkdir -p ${{ secrets.DOCKER_DEPLOY_PATH }}
             cd ${{ secrets.DOCKER_DEPLOY_PATH }}
             
             # Ghi tên image từ job build vào file .env để docker-compose đọc
