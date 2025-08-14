@@ -44,13 +44,13 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha
 
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-dotnet-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-dotnet-
+      # - name: Cache NuGet packages
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: ~/.nuget/packages
+      #     key: ${{ runner.os }}-dotnet-${{ hashFiles('**/*.csproj') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-dotnet-
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -59,8 +59,8 @@ jobs:
           push: true
           tags: ${{ steps.docker_meta.outputs.tags }}
           labels: ${{ steps.docker_meta.outputs.labels }}
-          cache-from: type=gha # Bật cache đọc từ GitHub Actions
-          cache-to: type=gha,mode=max # Bật cache ghi lên GitHub Actions
+          # cache-from: type=gha # Bật cache đọc từ GitHub Actions
+          # cache-to: type=gha,mode=max # Bật cache ghi lên GitHub Actions
 
   ####################################
   # JOB 2: DEPLOY TO PRODUCTION    #
