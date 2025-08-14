@@ -1,0 +1,93 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: CI/CD Deploy to VPS
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+        restore-keys: |
+          nuget-${{ runner.os }}-
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore ./TodoListApi.csproj
+      
+    - name: Build
+      run: dotnet build ./TodoListApi.csproj --configuration Release --no-restore
+      
+    - name: Publish
+      run: dotnet publish ./TodoListApi.csproj --configuration Release --no-build -o ./publish
+
+    - name: Deploy to VPS
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        source: "./publish/*"
+        target: ${{ secrets.APP_PATH }}
+        strip_components: 1
+
+    - name: Restart application service on VPS
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          sudo systemctl daemon-reload
+          sudo systemctl restart todoapp-api.service
+
+  notify:
+    # Luôn chạy job này, không quan trọng kết quả của các job trước
+    if: always()
+    
+    # Chờ cho cả 2 job 'build' và 'deploy' hoàn thành
+    needs: build-and-deploy
+    
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification
+        run: |
+          if [[ ${{ needs.build-and-deploy.result }} == 'success' ]]; then
+            STATUS="✅ *CI/CD THÀNH CÔNG*"
+            # Dùng \` để vô hiệu hóa dấu backtick
+            MESSAGE="*Repository:* \`${{ github.repository }}\`"
+          else
+            STATUS="❌ *CI/CD THẤT BẠI*"
+            MESSAGE="*Repository:* \`${{ github.repository }}\`%0A"
+            MESSAGE+="*Xem chi tiết tại:* [Link to Action](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          fi
+
+          # -- Dựng nội dung tin nhắn --
+          # Dùng \` ở đây nữa
+          TEXT="$STATUS%0A%0A*Commit:* \`${{ github.sha }}\`%0A$MESSAGE"
+
+          # -- Gửi tin nhắn qua Telegram API --
+          # Sử dụng -d cho từng tham số để tránh lỗi cú pháp phức tạp
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
+            -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+            -d text="$TEXT" \
+            -d parse_mode="MarkdownV2"
