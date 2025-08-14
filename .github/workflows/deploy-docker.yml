@@ -1,4 +1,4 @@
-name: Build and Deploy .NET API
+name: Build and Deploy .NET API with Docker
 
 on:
   push:
@@ -68,6 +68,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Show image name from build step
+        run: |
+          echo "Deploying image: ${{ needs.build.outputs.image_name }}"
 
       - name: Copy docker-compose.yml to VPS
         uses: appleboy/scp-action@master
