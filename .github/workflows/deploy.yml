@@ -59,3 +59,24 @@ jobs:
         script: |
           sudo systemctl daemon-reload
           sudo systemctl restart todoapp-api.service
+
+  notify:
+    # Luôn chạy job này, không quan trọng kết quả của các job trước
+    if: always()
+    
+    # Chờ cho cả 2 job 'build' và 'deploy' hoàn thành
+    needs: build-and-deploy
+    
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram notification on success
+        # Chỉ chạy bước này nếu TẤT CẢ các job trong 'needs' đều thành công
+        if: success()
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} -d text="✅ Deploy THÀNH CÔNG\nRepository: ${{ github.repository }}.\nCommit: ${{ github.sha }}"
+
+      - name: Send Telegram notification on failure
+        # Chỉ chạy bước này nếu CÓ BẤT KỲ job nào trong 'needs' bị thất bại
+        if: failure()
+        run: |
+          curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} -d text="❌ Deploy THẤT BẠI\nRepository: ${{ github.repository }}.\nCommit: ${{ github.sha }}.\nXem chi tiết tại: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
