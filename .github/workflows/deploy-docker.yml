@@ -54,7 +54,6 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ github.sha }}
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:latest
           cache-from: type=gha # Bật cache đọc từ GitHub Actions
-          cache-to: type=gha # Bật cache ghi lên GitHub Actions
 
   ####################################
   # JOB 2: DEPLOY TO PRODUCTION    #
