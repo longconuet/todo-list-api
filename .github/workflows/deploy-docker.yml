@@ -130,9 +130,9 @@ jobs:
 
             # Tái tạo lại tên image đầy đủ với tag là mã SHA của commit
             # Đây là cách đáng tin cậy nhất để đảm bảo deploy đúng phiên bản
-            # FULL_IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ github.sha }}"
+            FULL_IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ github.sha }}"
 
-            # echo "Deploying image: ${FULL_IMAGE_NAME}"
+            echo "Deploying image: ${FULL_IMAGE_NAME}"
             
             # Ghi tên image từ job build vào file .env để docker-compose đọc
             echo "IMAGE_TAG=${FULL_IMAGE_NAME}" > .env
