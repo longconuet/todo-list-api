@@ -30,10 +30,10 @@ jobs:
             ${{ runner.os }}-dotnet-
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore ./TodoListApi.csproj
 
       - name: Build application
-        run: dotnet build --no-restore -c Release
+        run: dotnet build ./TodoListApi.csproj --configuration Release --no-restore
       
       # (Tùy chọn) Thêm bước chạy Unit Test ở đây
       # - name: Run tests
