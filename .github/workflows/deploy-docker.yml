@@ -102,6 +102,9 @@ jobs:
             docker-compose pull
             docker-compose up -d --remove-orphans
 
+            # Chỉ xóa các image không được sử dụng và đã được tạo ra hơn 24 giờ trước
+            docker image prune -af --filter "until=24h"
+
   ################################
   # JOB GỬI THÔNG BÁO TELEGRAM  #
   ################################
