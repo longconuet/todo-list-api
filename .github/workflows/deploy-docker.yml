@@ -6,6 +6,9 @@ on:
   # Cho phép trigger thủ công
   workflow_dispatch:
 
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}
+
 jobs:
   #############################
   # JOB 1: BUILD & TEST       #
@@ -14,19 +17,28 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       # Xuất ra tên image để job sau sử dụng
-      image_name: ${{ steps.docker_meta.outputs.tags }}
+      # image_name: ${{ steps.docker_meta.outputs.tags }}
+      full_image: ${{ steps.output_image.outputs.full_image }}
+      
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up .NET 9
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
+      # Sử dụng nếu chạy Unit Test
+      # - name: Set up .NET 9
+      #   uses: actions/setup-dotnet@v4
+      #   with:
+      #     dotnet-version: '9.0.x'
       
       # (Tùy chọn) Thêm bước chạy Unit Test ở đây
       # - name: Run tests
       #   run: dotnet test --verbosity normal
+
+      - name: Set Docker image tag
+        id: vars
+        run: |
+          TAG_DATE=$(date +'%Y%m%d%H%M%S')
+          echo "TAG_DATE=$TAG_DATE" >> $GITHUB_ENV
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -34,15 +46,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: docker_meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
-          # Tạo tag: latest và tag theo mã commit SHA
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha
+      # - name: Extract metadata (tags, labels) for Docker
+      #   id: docker_meta
+      #   uses: docker/metadata-action@v5
+      #   with:
+      #     images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
+      #     # Tạo tag: latest và tag theo mã commit SHA
+      #     tags: |
+      #       type=raw,value=latest,enable={{is_default_branch}}
+      #       type=sha
 
       # - name: Cache NuGet packages
       #   uses: actions/cache@v4
@@ -57,10 +69,17 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.docker_meta.outputs.tags }}
-          labels: ${{ steps.docker_meta.outputs.labels }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.TAG_DATE }}
+            ${{ env.IMAGE_NAME }}:latest
+          # tags: ${{ steps.docker_meta.outputs.tags }}
+          # labels: ${{ steps.docker_meta.outputs.labels }}
           # cache-from: type=gha # Bật cache đọc từ GitHub Actions
           # cache-to: type=gha,mode=max # Bật cache ghi lên GitHub Actions
+
+      - name: Output image name for next job
+        id: output_image
+        run: echo "full_image=${IMAGE_NAME}:${TAG_DATE}" >> $GITHUB_OUTPUT
 
   ####################################
   # JOB 2: DEPLOY TO PRODUCTION    #
@@ -78,6 +97,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Show image name from build step
+        run: |
+          echo "Deploying image: ${{ needs.build.outputs.full_image }}"
 
       - name: Copy docker-compose.yml to VPS
         uses: appleboy/scp-action@master
@@ -101,12 +124,12 @@ jobs:
 
             # Tái tạo lại tên image đầy đủ với tag là mã SHA của commit
             # Đây là cách đáng tin cậy nhất để đảm bảo deploy đúng phiên bản
-            FULL_IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ github.sha }}"
+            # FULL_IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ github.sha }}"
 
-            echo "Deploying image: ${FULL_IMAGE_NAME}"
+            # echo "Deploying image: ${FULL_IMAGE_NAME}"
             
             # Ghi tên image từ job build vào file .env để docker-compose đọc
-            echo "IMAGE_TAG=${FULL_IMAGE_NAME}" > .env
+            echo "IMAGE_TAG=${{ needs.build.outputs.full_image }}" > .env
 
             # Đăng nhập vào Docker Hub
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
